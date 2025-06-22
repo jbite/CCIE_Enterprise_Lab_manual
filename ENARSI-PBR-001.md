@@ -242,12 +242,24 @@ R2#show route-map PBR_REDIRECT
 確認PBR策略已應用於R2的e1/1接口。
 ```
 R2#show ip policy
+Interface      Route map
+Ethernet1/1    PBR_REDIRECt
+
 R2#show running-config interface Ethernet1/1
 ```
 3. 追蹤路徑以驗證PBR效果 (在R1上):
 使用 traceroute 命令從R1的Loopback0發起，目的為R5的Loopback0。
 ```
 R1#traceroute 5.5.5.5 source Loopback0
+Type escape sequence to abort.
+Tracing the route to 5.5.5.5
+VRF info: (vrf in name/id, vrf out name/id)
+  1 10.12.1.2 56 msec 56 msec 60 msec
+  2 10.23.1.3 56 msec 52 msec 52 msec
+  3 10.23.1.2 68 msec 60 msec 52 msec
+  4 10.24.1.4 84 msec 84 msec 84 msec
+  5 10.45.1.5 88 msec *  60 msec
+
 ```
 預期輸出：正常情況下，路徑應為 10.12.1.2 (R2) -> 10.24.1.2 (R4) -> 10.45.1.2 (R5)。
 在PBR生效後，路徑應變為 10.12.1.2 (R2) -> 10.23.1.2 (R3) -> 10.34.1.2 (R4) -> 10.45.1.2 (R5)。這將證明PBR成功重導了流量。
@@ -256,6 +268,12 @@ R1#traceroute 5.5.5.5 source Loopback0
 查看PBR的匹配次數，確認流量是否通過PBR策略轉發。
 ```
 R2#show route-map PBR_REDIRECT
+route-map PBR_REDIRECt, permit, sequence 10
+  Match clauses:
+    ip address (access-lists): PBR_SOURCE_MATCH
+  Set clauses:
+    ip next-hop 10.23.1.3
+  Policy routing matches: 30 packets, 1800 bytes
 ```
 關注匹配條件的 "match" 次數是否增加。
 
