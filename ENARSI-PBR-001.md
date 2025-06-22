@@ -47,10 +47,10 @@
 ## 軟體 (Software):
 - Cisco IOS Software (Cisco 7200 series)
 - Image: c7200-adventerprisek9-mz.152-4.S7.image 
-- 配置流程 (Configuration Flow):
+  
+## 配置流程 (Configuration Flow):
 
 ### IP 地址規劃:
-
 **R1:**
 Loopback0: 1.1.1.1/32
 e1/0: 10.12.1.1/24
