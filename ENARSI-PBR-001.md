@@ -197,7 +197,7 @@ ip access-list extended PBR_SOURCE_MATCH
 ! 步驟 3.2: 建立路由圖並定義匹配與設置動作
 route-map PBR_REDIRECT permit 10
  match ip address PBR_SOURCE_MATCH
- set ip next-hop 10.23.1.2  ! 將下一跳設置為R3的e1/1接口IP
+ set ip next-hop 10.23.1.3  ! 將下一跳設置為R3的e1/1接口IP
 ! 步驟 3.3: 將路由圖應用於接收流量的接口 (R2的e1/1)
 interface Ethernet1/1
  ip policy route-map PBR_REDIRECT
@@ -209,6 +209,19 @@ end
 在R1上，ping R5的Loopback0，確保在PBR配置之前，流量可以正常到達。
 ```
 R1#ping 5.5.5.5 source Loopback0
+Sending 5, 100-byte ICMP Echos to 5.5.5.5, timeout is 2 seconds:
+Packet sent with a source address of 1.1.1.1
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 80/84/88 ms
+
+R1#traceroute 5.5.5.5 source lo0
+Type escape sequence to abort.
+Tracing the route to 5.5.5.5
+VRF info: (vrf in name/id, vrf out name/id)
+  1 10.12.1.2 56 msec 56 msec 56 msec
+  2 10.24.1.4 56 msec 56 msec 52 msec
+  3 10.45.1.5 80 msec *  72 msec
+
 ```
 在PBR配置完成後，再次從R1 ping R5的Loopback0，它仍應可達。
 
@@ -225,13 +238,13 @@ R2#show ip route 5.5.5.5
 R2#show access-lists PBR_SOURCE_MATCH
 R2#show route-map PBR_REDIRECT
 ```
-1. 驗證PBR在接口上的應用 (在R2上):
+2. 驗證PBR在接口上的應用 (在R2上):
 確認PBR策略已應用於R2的e1/1接口。
 ```
 R2#show ip policy
 R2#show running-config interface Ethernet1/1
 ```
-1. 追蹤路徑以驗證PBR效果 (在R1上):
+3. 追蹤路徑以驗證PBR效果 (在R1上):
 使用 traceroute 命令從R1的Loopback0發起，目的為R5的Loopback0。
 ```
 R1#traceroute 5.5.5.5 source Loopback0
@@ -239,9 +252,16 @@ R1#traceroute 5.5.5.5 source Loopback0
 預期輸出：正常情況下，路徑應為 10.12.1.2 (R2) -> 10.24.1.2 (R4) -> 10.45.1.2 (R5)。
 在PBR生效後，路徑應變為 10.12.1.2 (R2) -> 10.23.1.2 (R3) -> 10.34.1.2 (R4) -> 10.45.1.2 (R5)。這將證明PBR成功重導了流量。
 
-1. 檢查PBR統計信息 (在R2上):
+4. 檢查PBR統計信息 (在R2上):
 查看PBR的匹配次數，確認流量是否通過PBR策略轉發。
 ```
 R2#show route-map PBR_REDIRECT
 ```
 關注匹配條件的 "match" 次數是否增加。
+
+5. 一個可能是bug的現象
+當我在`ip access-list extend `中，`permit ip any any log`加上log時，會出現`FIB policy rejected - normal forwarding`
+使得流量無法使用PBR。
+
+
+
