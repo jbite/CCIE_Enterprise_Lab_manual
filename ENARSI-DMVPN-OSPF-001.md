@@ -75,16 +75,18 @@ interface Tunnel0
  ip mtu 1400
  ip nhrp map multicast dynamic
  ip nhrp network-id 100
- tunnel source GigabitEthernet0/0  (or appropriate physical interface)
+ tunnel source GigabitEthernet0/0
  tunnel mode gre multipoint
  tunnel key 123
  tunnel protection ipsec profile DMVPN_PROFILE
+ !Because horizon split rule, need to set this prevent interface keep flapping
+ ip ospf network point-to-multipoint
 
 crypto isakmp policy 10
  encr aes 256
  authentication pre-share
  group 5
-crypto isakmp key cisco address 0.0.0.0 0.0.0.0
+crypto isakmp key cisco address 0.0.0.0
 
 crypto ipsec transform-set TSET esp-aes 256 esp-sha256-hmac
  mode tunnel
@@ -197,27 +199,102 @@ router ospf 1
  network 10.0.0.4 0.0.0.0 area 0
 ```
 
-Verification:
+## Verification:
 
 Verify DMVPN Tunnel Status:
 ```
 show dmvpn (on all routers)
+R1#sh dmvpn
+Legend: Attrb --> S - Static, D - Dynamic, I - Incomplete
+        N - NATed, L - Local, X - No Socket
+        # Ent --> Number of NHRP entries with same NBMA peer
+        NHS Status: E --> Expecting Replies, R --> Responding, W --> Waiting
+        UpDn Time --> Up or Down Time for a Tunnel
+==========================================================================
 
+Interface: Tunnel0, IPv4 NHRP Details
+Type:Hub, NHRP Peers:3,
+
+ # Ent  Peer NBMA Addr Peer Tunnel Add State  UpDn Tm Attrb
+ ----- --------------- --------------- ----- -------- -----
+     1 10.12.1.2            172.16.0.2    UP 00:01:02     D
+     1 10.13.1.2            172.16.0.3    UP 00:01:15     D
+     1 10.14.1.2            172.16.0.4    UP 00:01:46     D
+```
+```
 show ip nhrp (on all routers)
-
+R1#sh ip nhrp
+172.16.0.2/32 via 172.16.0.2
+   Tunnel0 created 00:01:43, expire 01:58:17
+   Type: dynamic, Flags: unique registered used
+   NBMA address: 10.12.1.2
+172.16.0.3/32 via 172.16.0.3
+   Tunnel0 created 00:01:55, expire 01:58:05
+   Type: dynamic, Flags: unique registered used
+   NBMA address: 10.13.1.2
+172.16.0.4/32 via 172.16.0.4
+   Tunnel0 created 00:02:27, expire 01:57:33
+   Type: dynamic, Flags: unique registered used
+   NBMA address: 10.14.1.2
+```
+```
 show crypto isakmp sa (on all routers)
+R1#sh crypto isakmp sa
+IPv4 Crypto ISAKMP SA
+dst             src             state          conn-id status
+10.11.1.2       10.14.1.2       QM_IDLE           1002 ACTIVE
+10.11.1.2       10.13.1.2       QM_IDLE           1001 ACTIVE
+10.11.1.2       10.12.1.2       QM_IDLE           1003 ACTIVE
 
+IPv6 Crypto ISAKMP SA
+```
+```
 show crypto ipsec sa (on all routers)
+R1#sh crypto ipsec sa
 
-Verify OSPF Neighbor Adjacencies:
+interface: Tunnel0
+    Crypto map tag: Tunnel0-head-0, local addr 10.11.1.2
 
+   protected vrf: (none)
+   local  ident (addr/mask/prot/port): (10.11.1.2/255.255.255.255/47/0)
+   remote ident (addr/mask/prot/port): (10.14.1.2/255.255.255.255/47/0)
+   current_peer 10.14.1.2 port 500
+     PERMIT, flags={origin_is_acl,}
+    #pkts encaps: 42, #pkts encrypt: 42, #pkts digest: 42
+    #pkts decaps: 62, #pkts decrypt: 62, #pkts verify: 62
+    #pkts compressed: 0, #pkts decompressed: 0
+    #pkts not compressed: 0, #pkts compr. failed: 0
+    #pkts not decompressed: 0, #pkts decompress failed: 0
+    #send errors 0, #recv errors 0
+```
+
+### Verify OSPF Neighbor Adjacencies:
+```
 show ip ospf neighbor (on all routers - look for full adjacencies on the tunnel interface)
+R1#sh ip ospf neighbor
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+5.5.5.5           1   FULL/DR         00:00:36    10.11.1.1       Ethernet1/0
 
+```
 Verify IP Routing Table:
-
+```
 show ip route ospf (on all routers - ensure all loopback networks are learned)
+R1#sh ip route ospf
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route, H - NHRP, l - LISP
+       + - replicated route, % - next hop override
 
-ping 10.0.0.X (from R2 to R3, R2 to R4, R3 to R4, and all spokes to R1's loopback, etc. to test full reachability)
+Gateway of last resort is not set
+
+      10.0.0.0/8 is variably subnetted, 5 subnets, 2 masks
+O        10.12.1.0/30 [110/20] via 10.11.1.1, 00:15:21, Ethernet1/0
+O        10.13.1.0/30 [110/20] via 10.11.1.1, 00:15:21, Ethernet1/0
+O        10.14.1.0/30 [110/20] via 10.11.1.1, 00:15:21, Ethernet1/0
 ```
 ## Verify Spoke-to-Spoke Tunnels (Triggering):
 From R2, ping 10.0.0.3 (R3's loopback). Then, from R2, run show dmvpn and observe a direct tunnel entry to R3's public IP. Repeat for other spoke-to-spoke pings.
