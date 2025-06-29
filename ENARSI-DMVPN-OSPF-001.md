@@ -75,6 +75,7 @@ interface Tunnel0
  ip mtu 1400
  ip nhrp map multicast dynamic
  ip nhrp network-id 100
+ ip nhrp redirect
  tunnel source GigabitEthernet0/0
  tunnel mode gre multipoint
  tunnel key 123
@@ -106,11 +107,14 @@ interface Tunnel0
  ip address 172.16.0.2 255.255.255.0
  no ip redirects
  ip mtu 1400
- ip nhrp map 172.16.0.1 10.12.1.1  (Hub's Tunnel IP and Public IP)
+ !  (Hub's Tunnel IP and Public IP)
+ ip nhrp map 172.16.0.1 10.12.1.1
  ip nhrp map multicast 10.12.1.1
  ip nhrp network-id 100
+ ip hnrp shortcut
  ip nhrp nhs 172.16.0.1
- tunnel source GigabitEthernet0/0 (or appropriate physical interface)
+ ! (or appropriate physical interface)
+ tunnel source GigabitEthernet0/0
  tunnel mode gre multipoint
  tunnel key 123
  tunnel protection ipsec profile DMVPN_PROFILE
@@ -119,7 +123,7 @@ crypto isakmp policy 10
  encr aes 256
  authentication pre-share
  group 5
-crypto isakmp key cisco address 10.12.1.1
+crypto isakmp key cisco address 0.0.0.0
 
 crypto ipsec transform-set TSET esp-aes 256 esp-sha256-hmac
  mode tunnel
@@ -143,6 +147,7 @@ interface Tunnel0
  ip nhrp map 172.16.0.1 10.12.2.1
  ip nhrp map multicast 10.12.2.1
  ip nhrp network-id 100
+ ip hnrp shortcut
  ip nhrp nhs 172.16.0.1
  tunnel source GigabitEthernet0/0
  tunnel mode gre multipoint
@@ -153,7 +158,7 @@ crypto isakmp policy 10
  encr aes 256
  authentication pre-share
  group 5
-crypto isakmp key cisco address 10.12.2.1
+crypto isakmp key cisco address 0.0.0.0
 
 crypto ipsec transform-set TSET esp-aes 256 esp-sha256-hmac
  mode tunnel
@@ -175,6 +180,7 @@ interface Tunnel0
  ip nhrp map 172.16.0.1 10.12.3.1
  ip nhrp map multicast 10.12.3.1
  ip nhrp network-id 100
+ ip hnrp shortcut
  ip nhrp nhs 172.16.0.1
  tunnel source GigabitEthernet0/0
  tunnel mode gre multipoint
@@ -185,7 +191,7 @@ crypto isakmp policy 10
  encr aes 256
  authentication pre-share
  group 5
-crypto isakmp key cisco address 10.12.3.1
+crypto isakmp key cisco address 0.0.0.0
 
 crypto ipsec transform-set TSET esp-aes 256 esp-sha256-hmac
  mode tunnel
