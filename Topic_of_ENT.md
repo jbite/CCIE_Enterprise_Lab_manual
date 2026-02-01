@@ -4,9 +4,9 @@
 |1.1|Switched campus|[[Enterprise Campus Design: Multilayer Architectures and Design Principles]]|
 |1.1.a|Switch administration|
 |1.1.a.i|Managing MAC address table|[[Managing MAC address table]]
-|1.1.a.ii|    Errdisable recovery|
-|1.1.a.iii|    L2 MTU|
-|1.1.b|            Layer 2 protocols|
+|1.1.a.ii|Errdisable recovery|
+|1.1.a.iii|L2 MTU|
+|1.1.b|Layer 2 protocols|
 |1.1.b.i|CDP, LLDP|
 |1.1.b.ii|    UDLD|
 |1.1.c|        VLAN technologies|
